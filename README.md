@@ -16,12 +16,9 @@ MIT
 ### Examples of usage:
  Please generate your API token and add it to cloudgenix_settings.py
  
- Update line 151 in the script with your endpoint name
-    endpoint_name = "US-Zscaler"
- 
- 1. ./zscaler_tag_update.py -N "Branch-Site-1"
+ 1. ./zscaler_tag_update.py -S "Branch-Site-1" -N "US-Zscaler"
       - Will update Branch-Site-1 Zsclaer extended tag VPN ENDPOINT NAME if it has have the AUTO-zscaler tag present
- 2. ./zscaler_tag_update.py -N All
+ 2. ./zscaler_tag_update.py -S All -N "US-Zscaler"
       - Will update all sites Zsclaer extended tag VPN ENDPOINT NAME if they have the AUTO-zscaler tag present
 
 ### Caveats and known issues:
