@@ -123,20 +123,15 @@ def go():
 
     # login logic. Use cmdline if set, use AUTH_TOKEN next, finally user/pass from config file, then prompt.
     # check for token
-    if CLOUDGENIX_AUTH_TOKEN and not args["email"] and not args["pass"]:
+    if CLOUDGENIX_AUTH_TOKEN:
         cgx_session.interactive.use_token(CLOUDGENIX_AUTH_TOKEN)
         if cgx_session.tenant_id is None:
             print("AUTH_TOKEN login failure, please check token.")
             sys.exit()
 
     else:
-        while cgx_session.tenant_id is None:
-            cgx_session.interactive.login(user_email, user_password)
-            # clear after one failed login, force relogin.
-            if not cgx_session.tenant_id:
-                user_email = None
-                user_password = None
-
+        print("Please provide an auth token")
+        return
     ############################################################################
     # End Login handling, begin script..
     ############################################################################
@@ -151,7 +146,7 @@ def go():
     site_name = args["site"]
     endpoint_name = args["name"]
     
-    tag_update(cgx, site_name, endpoint_name) 
+    #tag_update(cgx, site_name, endpoint_name) 
     # end of script, run logout to clear session.
     print("End of script. Logout!")
     cgx_session.get.logout()
