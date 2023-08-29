@@ -19,7 +19,11 @@ MIT
  1. ./zscaler_tag_update.py -S "Branch-Site-1" -N "US-Zscaler"
       - Will update Branch-Site-1 Zsclaer extended tag VPN ENDPOINT NAME if it has have the AUTO-zscaler tag present
  2. ./zscaler_tag_update.py -S All -N "US-Zscaler"
-      - Will update all sites Zsclaer extended tag VPN ENDPOINT NAME if they have the AUTO-zscaler tag present
+      - Will update all sites Zsclaer extended tag VPN ENDPOINT NAME if they have the AUTO-zscaler tag present	  
+ 3. ./get_sit_.py
+      - Will export a csv file with all slites tagged with AUTO-zscaler
+ 4. ./zscaler_tag_update_list.py -F site_list.csv -N "US-Zscaler"
+      - Will update all sites in the provided list with Zsclaer extended tag VPN ENDPOINT NAME if they have the AUTO-zscaler tag present
 
 ### Caveats and known issues:
  - This is a PREVIEW release, hiccups to be expected. Please file issues on Github for any problems.
