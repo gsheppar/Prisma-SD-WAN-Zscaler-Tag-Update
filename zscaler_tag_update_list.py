@@ -12,6 +12,7 @@ import os
 import datetime
 import sys
 import json
+import csv
 
 
 # Global Vars
@@ -42,39 +43,42 @@ except ImportError:
         # not set
         CLOUDGENIX_AUTH_TOKEN = None
 
-def tag_update(cgx, site_name, endpoint_name):
+def tag_update(cgx, site_list, endpoint_name):
     for site in cgx.get.sites().cgx_content['items']:
-        if site["name"] == site_name or site_name == "All":
-            if site["tags"]:
-                for item in site["tags"]:
-                    if item == "AUTO-zscaler":
-                        tag_list = []
-                        update_tag = False
-                        for extended_tag in site["extended_tags"]:
-                            if "key" in extended_tag:
-                                if extended_tag["key"] == "AUTO-zscaler":
-                                    fix = json.loads(extended_tag["value"])
-                                    if fix["customEndpointName"] == endpoint_name:
-                                        print("Site " + site_name + " zscaler tag is correct")
+        for check_site in site_list:
+            if check_site["Site_Name"] == site["name"]:
+                if site["tags"]:
+                    for item in site["tags"]:
+                        if item == "AUTO-zscaler":
+                            tag_list = []
+                            update_tag = False
+                            for extended_tag in site["extended_tags"]:
+                                if "key" in extended_tag:
+                                    if extended_tag["key"] == "AUTO-zscaler":
+                                        fix = json.loads(extended_tag["value"])
+                                        if fix["customEndpointName"] == endpoint_name:
+                                            print("Site " + site_name + " zscaler tag is correct")
+                                        else:
+                                            fix["customEndpointName"] = endpoint_name
+                                            extended_tag["value"] = str(fix)
+                                            extended_tag["value"] = extended_tag["value"].replace("\'", "\"")
+                                            extended_tag["value"] = extended_tag["value"].replace("None", "null")
+                                            extended_tag["value"] = extended_tag["value"].replace("False", "false")
+                                            extended_tag["value"] = extended_tag["value"].replace("True", "true")
+                                            tag_list.append(extended_tag)
+                                            update_tag = True
                                     else:
-                                        fix["customEndpointName"] = endpoint_name
-                                        extended_tag["value"] = str(fix)
-                                        extended_tag["value"] = extended_tag["value"].replace("\'", "\"")
-                                        extended_tag["value"] = extended_tag["value"].replace("None", "null")
-                                        extended_tag["value"] = extended_tag["value"].replace("False", "false")
-                                        extended_tag["value"] = extended_tag["value"].replace("True", "true")
                                         tag_list.append(extended_tag)
-                                        update_tag = True
+                            if update_tag:
+                                site["extended_tags"] = tag_list
+                                resp = cgx.put.sites(site_id=site["id"], data=site)
+                                if not resp:
+                                    print("Error updating zscaler tag on " + site["name"])
+                                    print(str(jd_detailed(resp)))
                                 else:
-                                    tag_list.append(extended_tag)
-                        if update_tag:
-                            site["extended_tags"] = tag_list
-                            resp = cgx.put.sites(site_id=site["id"], data=site)
-                            if not resp:
-                                print("Error updating zscaler tag on " + site["name"])
-                                print(str(jd_detailed(resp)))
-                            else:
-                                print("Updating zsclaer tag on " + site["name"])  
+                                    print("Updating zsclaer tag on " + site["name"])
+                else:
+                    print(site["name"] + " has no site tags")
     return
                                  
 def go():
@@ -88,7 +92,7 @@ def go():
     # Allow Controller and site selection modification and debug level sets.
     config_group = parser.add_argument_group('Name', 'These options change how the configuration is loaded.')
     config_group.add_argument("--name", "-N", help="Zscaler Endpoint Name", required=True, default=None)
-    config_group.add_argument("--site", "-S", help="Site Name", required=True, default=None)
+    config_group.add_argument("--file", "-F", help="CSV File", required=True, default=None)
     controller_group = parser.add_argument_group('API', 'These options change how this program connects to the API.')
     controller_group.add_argument("--controller", "-C",
                                   help="Controller URI, ex. "
@@ -144,10 +148,17 @@ def go():
     tenant_str = "".join(x for x in cgx_session.tenant_name if x.isalnum()).lower()
     cgx = cgx_session
     
-    site_name = args["site"]
+    site_file = args["file"]
     endpoint_name = args["name"]
     
-    tag_update(cgx, site_name, endpoint_name) 
+    site_list = []
+    
+    myFile = open(site_file, 'r')
+    reader = csv.DictReader(myFile)
+    for dictionary in reader:
+        site_list.append(dictionary)
+    
+    tag_update(cgx, site_list, endpoint_name) 
     # end of script, run logout to clear session.
     print("End of script. Logout!")
     cgx_session.get.logout()

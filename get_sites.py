@@ -12,13 +12,14 @@ import os
 import datetime
 import sys
 import json
+import csv
 
 
 # Global Vars
 TIME_BETWEEN_API_UPDATES = 60       # seconds
 REFRESH_LOGIN_TOKEN_INTERVAL = 7    # hours
 SDK_VERSION = cloudgenix.version
-SCRIPT_NAME = 'CloudGenix: Example Zscaler script'
+SCRIPT_NAME = 'CloudGenix: Get list of sites'
 SCRIPT_VERSION = "v1"
 
 # Set NON-SYSLOG logging to use function name
@@ -42,39 +43,33 @@ except ImportError:
         # not set
         CLOUDGENIX_AUTH_TOKEN = None
 
-def tag_update(cgx, site_name, endpoint_name):
+def get_sites(cgx):
+    site_list = []
     for site in cgx.get.sites().cgx_content['items']:
-        if site["name"] == site_name or site_name == "All":
-            if site["tags"]:
-                for item in site["tags"]:
-                    if item == "AUTO-zscaler":
-                        tag_list = []
-                        update_tag = False
-                        for extended_tag in site["extended_tags"]:
-                            if "key" in extended_tag:
-                                if extended_tag["key"] == "AUTO-zscaler":
-                                    fix = json.loads(extended_tag["value"])
-                                    if fix["customEndpointName"] == endpoint_name:
-                                        print("Site " + site_name + " zscaler tag is correct")
-                                    else:
-                                        fix["customEndpointName"] = endpoint_name
-                                        extended_tag["value"] = str(fix)
-                                        extended_tag["value"] = extended_tag["value"].replace("\'", "\"")
-                                        extended_tag["value"] = extended_tag["value"].replace("None", "null")
-                                        extended_tag["value"] = extended_tag["value"].replace("False", "false")
-                                        extended_tag["value"] = extended_tag["value"].replace("True", "true")
-                                        tag_list.append(extended_tag)
-                                        update_tag = True
-                                else:
-                                    tag_list.append(extended_tag)
-                        if update_tag:
-                            site["extended_tags"] = tag_list
-                            resp = cgx.put.sites(site_id=site["id"], data=site)
-                            if not resp:
-                                print("Error updating zscaler tag on " + site["name"])
-                                print(str(jd_detailed(resp)))
-                            else:
-                                print("Updating zsclaer tag on " + site["name"])  
+        if site["tags"]:
+            for item in site["tags"]:
+                if item == "AUTO-zscaler":
+                    site_data = {}
+                    site_data["Site_Name"] = site["name"]
+                    site_list.append(site_data)
+    
+    
+    if site_list:
+        csv_columns = site_list[0].keys()
+        csv_file = "site_list.csv"
+        
+        try:
+            with open(csv_file, 'w') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+                writer.writeheader()
+                for data in site_list:
+                    writer.writerow(data)
+                print("Saved site_list.csv file")
+        except IOError:
+            print("CSV Write Failed")
+    else:
+        print("No sites found")
+                    
     return
                                  
 def go():
@@ -86,9 +81,6 @@ def go():
     parser = argparse.ArgumentParser(description="{0}.".format(SCRIPT_NAME))
 
     # Allow Controller and site selection modification and debug level sets.
-    config_group = parser.add_argument_group('Name', 'These options change how the configuration is loaded.')
-    config_group.add_argument("--name", "-N", help="Zscaler Endpoint Name", required=True, default=None)
-    config_group.add_argument("--site", "-S", help="Site Name", required=True, default=None)
     controller_group = parser.add_argument_group('API', 'These options change how this program connects to the API.')
     controller_group.add_argument("--controller", "-C",
                                   help="Controller URI, ex. "
@@ -143,11 +135,8 @@ def go():
     # create file-system friendly tenant str.
     tenant_str = "".join(x for x in cgx_session.tenant_name if x.isalnum()).lower()
     cgx = cgx_session
-    
-    site_name = args["site"]
-    endpoint_name = args["name"]
-    
-    tag_update(cgx, site_name, endpoint_name) 
+
+    get_sites(cgx) 
     # end of script, run logout to clear session.
     print("End of script. Logout!")
     cgx_session.get.logout()
